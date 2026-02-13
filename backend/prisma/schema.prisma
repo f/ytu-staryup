@@ -1,0 +1,84 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  password     String
+  name         String
+  bio          String        @default("")
+  avatarURL    String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  
+  projects     Project[]     @relation("ProjectOwner")
+  applications Application[]
+  upvotes      Upvote[]
+}
+
+model Project {
+  id              String        @id @default(uuid())
+  title           String
+  description     String
+  category        Category
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  ownerId         String
+  owner           User          @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  
+  applications    Application[]
+  upvotes         Upvote[]
+}
+
+model Application {
+  id          String            @id @default(uuid())
+  role        String
+  message     String            @default("")
+  status      ApplicationStatus @default(PENDING)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  
+  projectId   String
+  project     Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  applicantId String
+  applicant   User              @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, applicantId])
+}
+
+model Upvote {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+}
+
+enum Category {
+  TECHNOLOGY
+  SOCIAL
+  FINANCE
+  HEALTH
+  EDUCATION
+  ENTERTAINMENT
+  OTHER
+}
+
+enum ApplicationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
