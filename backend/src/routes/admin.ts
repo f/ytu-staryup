@@ -101,6 +101,7 @@ adminRouter.get('/users', authenticateAdmin, async (req: AdminRequest, res) => {
         bio: true,
         avatarURL: true,
         credits: true,
+        banned: true,
         createdAt: true,
         _count: { select: { projects: true, applications: true } },
       },
@@ -134,6 +135,7 @@ adminRouter.get('/users/:id', authenticateAdmin, async (req: AdminRequest, res) 
       bio: true,
       avatarURL: true,
       credits: true,
+      banned: true,
       createdAt: true,
       _count: { select: { projects: true, applications: true } },
     },
@@ -193,6 +195,33 @@ adminRouter.post('/users/:id/credits', authenticateAdmin, async (req: AdminReque
     }
     throw error;
   }
+});
+
+// Ban/unban user
+adminRouter.patch('/users/:id/ban', authenticateAdmin, async (req: AdminRequest, res) => {
+  const user = await prisma.user.findUnique({ where: { id: req.params.id } });
+  if (!user) {
+    return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+  }
+
+  const updated = await prisma.user.update({
+    where: { id: req.params.id },
+    data: { banned: !user.banned },
+    select: { id: true, banned: true },
+  });
+
+  res.json(updated);
+});
+
+// Delete user
+adminRouter.delete('/users/:id', authenticateAdmin, async (req: AdminRequest, res) => {
+  const user = await prisma.user.findUnique({ where: { id: req.params.id } });
+  if (!user) {
+    return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+  }
+
+  await prisma.user.delete({ where: { id: req.params.id } });
+  res.status(204).send();
 });
 
 // List projects

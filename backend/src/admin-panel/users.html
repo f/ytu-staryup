@@ -113,8 +113,13 @@
       }
 
       document.getElementById('userTable').innerHTML = data.users.map(u => `
-        <tr class="border-b border-gray-100 hover:bg-gray-50">
-          <td class="px-6 py-4 font-medium">${u.name}</td>
+        <tr class="border-b border-gray-100 hover:bg-gray-50 ${u.banned ? 'bg-red-50' : ''}">
+          <td class="px-6 py-4">
+            <div class="flex items-center space-x-2">
+              <span class="font-medium">${u.name}</span>
+              ${u.banned ? '<span class="px-1.5 py-0.5 text-xs rounded bg-red-100 text-red-700">Banlı</span>' : ''}
+            </div>
+          </td>
           <td class="px-6 py-4 text-gray-600">${u.email}</td>
           <td class="px-6 py-4"><span class="font-semibold text-primary-600">${u.credits}</span></td>
           <td class="px-6 py-4">${u.projectCount}</td>
@@ -124,8 +129,12 @@
             <div class="flex space-x-2">
               <button onclick="openCreditModal('${u.id}', '${u.name}', ${u.credits})"
                 class="text-primary-600 hover:text-primary-800 text-xs font-medium">Kredi</button>
+              <button onclick="toggleBan('${u.id}', '${u.name}', ${u.banned})"
+                class="${u.banned ? 'text-green-600 hover:text-green-800' : 'text-yellow-600 hover:text-yellow-800'} text-xs font-medium">${u.banned ? 'Banı Kaldır' : 'Banla'}</button>
               <button onclick="openDetail('${u.id}')"
                 class="text-gray-500 hover:text-gray-700 text-xs font-medium">Detay</button>
+              <button onclick="confirmDeleteUser('${u.id}', '${u.name}')"
+                class="text-red-600 hover:text-red-800 text-xs font-medium">Sil</button>
             </div>
           </td>
         </tr>
@@ -221,6 +230,21 @@
 
     function closeDetailModal() {
       document.getElementById('detailModal').classList.add('hidden');
+    }
+
+    async function toggleBan(userId, name, currentlyBanned) {
+      const action = currentlyBanned ? 'banını kaldırmak' : 'banlamak';
+      if (!confirm(`"${name}" adlı kullanıcıyı ${action} istediğinize emin misiniz?`)) return;
+
+      await api(`/users/${userId}/ban`, { method: 'PATCH' });
+      loadUsers(currentPage);
+    }
+
+    async function confirmDeleteUser(userId, name) {
+      if (!confirm(`"${name}" adlı kullanıcıyı silmek istediğinize emin misiniz?\n\nBu işlem geri alınamaz. Kullanıcının tüm projeleri, başvuruları ve kredi geçmişi silinecektir.`)) return;
+
+      await api(`/users/${userId}`, { method: 'DELETE' });
+      loadUsers(currentPage);
     }
 
     loadUsers();

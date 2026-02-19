@@ -80,6 +80,10 @@ authRouter.post('/login', async (req, res) => {
     if (!validPassword) {
       return res.status(401).json({ error: 'Geçersiz şifre' });
     }
+
+    if (user.banned) {
+      return res.status(403).json({ error: 'Hesabınız askıya alınmıştır' });
+    }
     
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET!, {
       expiresIn: '30d',

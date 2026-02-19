@@ -7,6 +7,7 @@ struct ProjectDetailView: View {
     
     @State private var selectedTab = 0
     @State private var isUpvoting = false
+    @Environment(\.dismiss) private var dismiss
     
     var category: Category {
         guard let catString = viewModel.projectDetail?.category else { return .other }
@@ -116,8 +117,55 @@ struct ProjectDetailView: View {
                 .sheet(isPresented: $viewModel.showApplySheet) {
                     APIApplySheetView(projectId: projectId, applicationCost: project.applicationCost ?? 5, viewModel: viewModel)
                 }
+                .sheet(isPresented: $viewModel.showEditSheet) {
+                    EditProjectSheetView(projectId: projectId, viewModel: viewModel)
+                }
+                .confirmationDialog(
+                    "Projeyi silmek istediğinize emin misiniz?",
+                    isPresented: $viewModel.showDeleteConfirmation,
+                    titleVisibility: .visible
+                ) {
+                    Button("Sil", role: .destructive) {
+                        Task {
+                            await viewModel.deleteProject(id: projectId)
+                        }
+                    }
+                    Button("İptal", role: .cancel) { }
+                } message: {
+                    Text("Bu işlem geri alınamaz. Tüm başvurular da silinecektir.")
+                }
+                .onChange(of: viewModel.didDelete) { _, deleted in
+                    if deleted { dismiss() }
+                }
                 .overlay(alignment: .bottom) {
-                    if !viewModel.isOwnerOfDetail() && !viewModel.hasApplied() {
+                    if viewModel.isOwnerOfDetail() {
+                        HStack(spacing: 12) {
+                            Button {
+                                viewModel.prepareEdit()
+                            } label: {
+                                HStack {
+                                    Image(systemName: "pencil")
+                                    Text("Düzenle")
+                                        .font(.headline)
+                                }
+                                .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.large)
+                            
+                            Button {
+                                viewModel.showDeleteConfirmation = true
+                            } label: {
+                                Image(systemName: "trash")
+                                    .font(.headline)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(.red)
+                            .controlSize(.large)
+                        }
+                        .padding()
+                        .background(.ultraThinMaterial)
+                    } else if !viewModel.hasApplied() {
                         let cost = project.applicationCost ?? 5
                         let userCredits = viewModel.currentUser?.credits ?? 0
                         let canAfford = userCredits >= cost || cost == 0
@@ -385,6 +433,87 @@ struct APIApplySheetView: View {
                         }
                     }
                     .disabled(viewModel.isLoading || viewModel.applyRole.isEmpty)
+                }
+            }
+        }
+    }
+}
+
+struct EditProjectSheetView: View {
+    let projectId: String
+    @ObservedObject var viewModel: ProjectDetailViewModel
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("Proje başlığı", text: $viewModel.editTitle)
+                } header: {
+                    Text("Başlık")
+                }
+                
+                Section {
+                    Picker("Kategori", selection: $viewModel.editCategory) {
+                        ForEach(Category.allCases) { category in
+                            Label(category.rawValue, systemImage: category.icon)
+                                .tag(category)
+                        }
+                    }
+                } header: {
+                    Text("Kategori")
+                }
+                
+                Section {
+                    TextEditor(text: $viewModel.editDescription)
+                        .frame(minHeight: 150)
+                } header: {
+                    Text("Açıklama")
+                }
+                
+                Section {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Başvuru Maliyeti")
+                            Spacer()
+                            HStack(spacing: 4) {
+                                Image(systemName: "star.circle.fill")
+                                    .foregroundStyle(.orange)
+                                Text("\(Int(viewModel.editApplicationCost))")
+                                    .fontWeight(.bold)
+                                    .foregroundStyle(.orange)
+                            }
+                        }
+                        Slider(value: $viewModel.editApplicationCost, in: 0...100, step: 1)
+                            .tint(.orange)
+                    }
+                } header: {
+                    Text("Kredi")
+                }
+                
+                if let error = viewModel.errorMessage {
+                    Section {
+                        Text(error)
+                            .foregroundStyle(.red)
+                    }
+                }
+            }
+            .navigationTitle("Projeyi Düzenle")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("İptal") {
+                        dismiss()
+                    }
+                }
+                
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Kaydet") {
+                        Task {
+                            await viewModel.updateProject(id: projectId)
+                        }
+                    }
+                    .disabled(viewModel.isLoading || viewModel.editTitle.isEmpty)
                 }
             }
         }

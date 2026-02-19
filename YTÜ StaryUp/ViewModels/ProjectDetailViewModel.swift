@@ -7,8 +7,15 @@ class ProjectDetailViewModel: ObservableObject {
     @Published var isLoading = true
     @Published var errorMessage: String?
     @Published var showApplySheet = false
+    @Published var showEditSheet = false
+    @Published var showDeleteConfirmation = false
+    @Published var didDelete = false
     @Published var applyRole = ""
     @Published var applyMessage = ""
+    @Published var editTitle = ""
+    @Published var editDescription = ""
+    @Published var editCategory: Category = .technology
+    @Published var editApplicationCost: Double = 5
     
     private let api = APIService.shared
     
@@ -85,5 +92,54 @@ class ProjectDetailViewModel: ObservableObject {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+    
+    func deleteProject(id: String) async {
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            try await api.deleteProject(id: id)
+            didDelete = true
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        
+        isLoading = false
+    }
+    
+    func prepareEdit() {
+        guard let detail = projectDetail else { return }
+        editTitle = detail.title
+        editDescription = detail.description
+        editCategory = Category(apiValue: detail.category) ?? .technology
+        editApplicationCost = Double(detail.applicationCost ?? 5)
+        showEditSheet = true
+    }
+    
+    func updateProject(id: String) async {
+        guard !editTitle.isEmpty else {
+            errorMessage = "Proje başlığı gerekli"
+            return
+        }
+        
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            _ = try await api.updateProject(
+                id: id,
+                title: editTitle,
+                description: editDescription,
+                category: editCategory.apiValue,
+                applicationCost: Int(editApplicationCost)
+            )
+            showEditSheet = false
+            await fetchProjectDetail(id: id)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        
+        isLoading = false
     }
 }

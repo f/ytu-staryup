@@ -264,6 +264,21 @@ class APIService: ObservableObject {
         return try await request("/projects/\(projectId)/upvote", method: "POST")
     }
     
+    func updateProject(id: String, title: String, description: String, category: String, applicationCost: Int) async throws {
+        struct UpdateRequest: Encodable {
+            let title: String
+            let description: String
+            let category: String
+            let applicationCost: Int
+        }
+        
+        try await requestVoid("/projects/\(id)", method: "PATCH", body: UpdateRequest(title: title, description: description, category: category, applicationCost: applicationCost))
+    }
+    
+    func deleteProject(id: String) async throws {
+        try await requestVoid("/projects/\(id)", method: "DELETE")
+    }
+    
     // MARK: - Applications
     
     func applyToProject(projectId: String, role: String, message: String) async throws -> APIApplication {
