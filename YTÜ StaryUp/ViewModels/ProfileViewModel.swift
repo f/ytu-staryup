@@ -7,6 +7,7 @@ class ProfileViewModel: ObservableObject {
     @Published var userApplications: [APIApplication] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
+    @Published var applicationToWithdraw: APIApplication?
     
     private let api = APIService.shared
     
@@ -29,6 +30,15 @@ class ProfileViewModel: ObservableObject {
         }
         
         isLoading = false
+    }
+    
+    func withdrawApplication(_ application: APIApplication) async {
+        do {
+            try await api.withdrawApplication(id: application.id)
+            userApplications.removeAll { $0.id == application.id }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
     
     func logout() {

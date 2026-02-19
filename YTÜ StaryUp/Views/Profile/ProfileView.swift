@@ -68,41 +68,73 @@ struct ProfileView: View {
                     Spacer()
                     ProgressView()
                     Spacer()
-                } else {
+                } else if selectedSegment == 0 {
                     ScrollView {
                         LazyVStack(spacing: 12) {
-                            if selectedSegment == 0 {
-                                if viewModel.userProjects.isEmpty {
-                                    EmptyStateView(
-                                        icon: "folder",
-                                        title: "Henüz proje yok",
-                                        message: "İlk projenizi paylaşın!"
-                                    )
-                                    .padding(.top, 40)
-                                } else {
-                                    ForEach(viewModel.userProjects) { project in
-                                        NavigationLink(destination: ProjectDetailView(projectId: project.id)) {
-                                            ProjectCardView(project: project, onUpvote: {})
-                                        }
-                                        .buttonStyle(.plain)
-                                    }
-                                }
+                            if viewModel.userProjects.isEmpty {
+                                EmptyStateView(
+                                    icon: "folder",
+                                    title: "Henüz proje yok",
+                                    message: "İlk projenizi paylaşın!"
+                                )
+                                .padding(.top, 40)
                             } else {
-                                if viewModel.userApplications.isEmpty {
-                                    EmptyStateView(
-                                        icon: "paperplane",
-                                        title: "Henüz başvuru yok",
-                                        message: "Projelere başvurun!"
-                                    )
-                                    .padding(.top, 40)
-                                } else {
-                                    ForEach(viewModel.userApplications) { application in
-                                        APIApplicationCard(application: application)
+                                ForEach(viewModel.userProjects) { project in
+                                    NavigationLink(destination: ProjectDetailView(projectId: project.id)) {
+                                        ProjectCardView(project: project, onUpvote: {})
                                     }
+                                    .buttonStyle(.plain)
                                 }
                             }
                         }
                         .padding()
+                    }
+                } else {
+                    if viewModel.userApplications.isEmpty {
+                        Spacer()
+                        EmptyStateView(
+                            icon: "paperplane",
+                            title: "Henüz başvuru yok",
+                            message: "Projelere başvurun!"
+                        )
+                        Spacer()
+                    } else {
+                        List {
+                            ForEach(viewModel.userApplications) { application in
+                                APIApplicationCard(application: application)
+                                    .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                                    .listRowSeparator(.hidden)
+                                    .listRowBackground(Color.clear)
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                        if application.status.uppercased() == "PENDING" {
+                                            Button("İptal Et") {
+                                                viewModel.applicationToWithdraw = application
+                                            }
+                                            .tint(.red)
+                                        }
+                                    }
+                            }
+                        }
+                        .listStyle(.plain)
+                        .confirmationDialog(
+                            "Başvuruyu geri çekmek istediğinize emin misiniz?",
+                            isPresented: Binding(
+                                get: { viewModel.applicationToWithdraw != nil },
+                                set: { if !$0 { viewModel.applicationToWithdraw = nil } }
+                            ),
+                            titleVisibility: .visible
+                        ) {
+                            Button("İptal Et", role: .destructive) {
+                                if let app = viewModel.applicationToWithdraw {
+                                    Task {
+                                        await viewModel.withdrawApplication(app)
+                                    }
+                                }
+                            }
+                            Button("Vazgeç", role: .cancel) {
+                                viewModel.applicationToWithdraw = nil
+                            }
+                        }
                     }
                 }
             }

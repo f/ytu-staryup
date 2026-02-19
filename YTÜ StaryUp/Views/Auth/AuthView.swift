@@ -21,7 +21,6 @@ struct AuthView: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
-                .padding(.top, 40)
                 
                 // Mode Picker
                 Picker("Mod", selection: $isLoginMode) {
@@ -84,9 +83,8 @@ struct AuthView: View {
                 .controlSize(.large)
                 .padding(.horizontal)
                 .disabled(authViewModel.isLoading)
-                
-                Spacer()
             }
+            .frame(maxHeight: .infinity, alignment: .center)
         }
     }
 }

@@ -290,6 +290,10 @@ class APIService: ObservableObject {
         
         return try await request("/applications/\(id)/status", method: "PATCH", body: StatusRequest(status: status))
     }
+    
+    func withdrawApplication(id: String) async throws {
+        try await requestVoid("/applications/\(id)", method: "DELETE")
+    }
 }
 
 // MARK: - API Models
