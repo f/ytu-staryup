@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../lib/prisma.js';
 import { authenticate, AuthRequest } from '../middleware/auth.js';
+import { addCredits, getConfigNumber } from '../lib/credits.js';
 
 export const authRouter = Router();
 
@@ -30,11 +31,14 @@ authRouter.post('/register', async (req, res) => {
     
     const hashedPassword = await bcrypt.hash(password, 10);
     
+    const bonusAmount = await getConfigNumber('REGISTRATION_BONUS_AMOUNT', 50);
+
     const user = await prisma.user.create({
       data: {
         email,
         password: hashedPassword,
         name,
+        credits: bonusAmount,
       },
       select: {
         id: true,
@@ -42,9 +46,12 @@ authRouter.post('/register', async (req, res) => {
         name: true,
         bio: true,
         avatarURL: true,
+        credits: true,
         createdAt: true,
       },
     });
+
+    await addCredits(user.id, bonusAmount, 'REGISTRATION_BONUS', 'Hoşgeldin kredisi');
     
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET!, {
       expiresIn: '30d',
@@ -85,6 +92,7 @@ authRouter.post('/login', async (req, res) => {
         name: user.name,
         bio: user.bio,
         avatarURL: user.avatarURL,
+        credits: user.credits,
         createdAt: user.createdAt,
       },
       token,
@@ -107,6 +115,7 @@ authRouter.get('/me', authenticate, async (req: AuthRequest, res) => {
       name: true,
       bio: true,
       avatarURL: true,
+      credits: true,
       createdAt: true,
     },
   });
@@ -138,6 +147,7 @@ authRouter.patch('/me', authenticate, async (req: AuthRequest, res) => {
         name: true,
         bio: true,
         avatarURL: true,
+        credits: true,
         createdAt: true,
       },
     });

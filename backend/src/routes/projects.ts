@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { authenticate, AuthRequest } from '../middleware/auth.js';
 import { Category } from '@prisma/client';
+import { addCredits, spendCredits, getConfigNumber } from '../lib/credits.js';
 
 export const projectRouter = Router();
 
@@ -10,6 +11,7 @@ const createProjectSchema = z.object({
   title: z.string().min(1, 'Başlık gerekli'),
   description: z.string().min(1, 'Açıklama gerekli'),
   category: z.nativeEnum(Category),
+  applicationCost: z.number().int().min(0, 'Başvuru maliyeti 0 veya daha fazla olmalı').max(100, 'Başvuru maliyeti en fazla 100 olabilir').default(5),
 });
 
 // Get all projects
@@ -48,6 +50,7 @@ projectRouter.get('/', async (req, res) => {
     title: project.title,
     description: project.description,
     category: project.category,
+    applicationCost: project.applicationCost,
     createdAt: project.createdAt,
     owner: project.owner,
     upvoteCount: project._count.upvotes,
@@ -107,6 +110,7 @@ projectRouter.get('/:id', async (req, res) => {
     title: project.title,
     description: project.description,
     category: project.category,
+    applicationCost: project.applicationCost,
     createdAt: project.createdAt,
     owner: project.owner,
     upvoteCount: project._count.upvotes,
@@ -125,13 +129,14 @@ projectRouter.get('/:id', async (req, res) => {
 // Create project
 projectRouter.post('/', authenticate, async (req: AuthRequest, res) => {
   try {
-    const { title, description, category } = createProjectSchema.parse(req.body);
+    const { title, description, category, applicationCost } = createProjectSchema.parse(req.body);
     
     const project = await prisma.project.create({
       data: {
         title,
         description,
         category,
+        applicationCost,
         ownerId: req.userId!,
       },
       include: {
@@ -150,6 +155,7 @@ projectRouter.post('/', authenticate, async (req: AuthRequest, res) => {
       title: project.title,
       description: project.description,
       category: project.category,
+      applicationCost: project.applicationCost,
       createdAt: project.createdAt,
       owner: project.owner,
       upvoteCount: 0,
@@ -170,6 +176,7 @@ projectRouter.patch('/:id', authenticate, async (req: AuthRequest, res) => {
     title: z.string().min(1).optional(),
     description: z.string().min(1).optional(),
     category: z.nativeEnum(Category).optional(),
+    applicationCost: z.number().int().min(0).max(100).optional(),
   });
   
   try {
@@ -227,11 +234,26 @@ projectRouter.post('/:id/upvote', authenticate, async (req: AuthRequest, res) =>
     },
   });
   
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { ownerId: true },
+  });
+
+  if (!project) {
+    return res.status(404).json({ error: 'Proje bulunamadı' });
+  }
+
   if (existingUpvote) {
     // Remove upvote
     await prisma.upvote.delete({
       where: { id: existingUpvote.id },
     });
+
+    // Proje sahibinden upvote kredisini geri al
+    if (project.ownerId !== userId) {
+      const upvoteCredit = await getConfigNumber('UPVOTE_CREDIT_AMOUNT', 2);
+      await spendCredits(project.ownerId, upvoteCredit, 'UPVOTE_EARNED', 'Upvote geri alındı – kredi iadesi', projectId).catch(() => {});
+    }
     
     const count = await prisma.upvote.count({ where: { projectId } });
     return res.json({ upvoted: false, upvoteCount: count });
@@ -240,6 +262,12 @@ projectRouter.post('/:id/upvote', authenticate, async (req: AuthRequest, res) =>
     await prisma.upvote.create({
       data: { userId, projectId },
     });
+
+    // Proje sahibine upvote kredisi ver (kendi projesine upvote yapamazsa da kontrol)
+    if (project.ownerId !== userId) {
+      const upvoteCredit = await getConfigNumber('UPVOTE_CREDIT_AMOUNT', 2);
+      await addCredits(project.ownerId, upvoteCredit, 'UPVOTE_EARNED', 'Proje upvote kredisi', projectId);
+    }
     
     const count = await prisma.upvote.count({ where: { projectId } });
     return res.json({ upvoted: true, upvoteCount: count });
@@ -263,6 +291,7 @@ projectRouter.get('/user/:userId', async (req, res) => {
   
   res.json(projects.map(p => ({
     ...p,
+    applicationCost: p.applicationCost,
     upvoteCount: p._count.upvotes,
     applicationCount: p._count.applications,
   })));

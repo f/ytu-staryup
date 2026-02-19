@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Projeler — StaryUp Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={theme:{extend:{colors:{primary:{50:'#f0f9ff',100:'#e0f2fe',200:'#bae6fd',300:'#7dd3fc',400:'#38bdf8',500:'#0ea5e9',600:'#0284c7',700:'#0369a1',800:'#075985',900:'#0c4a6e'}}}}}</script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div id="nav"></div>
+
+  <div class="max-w-7xl mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-bold text-gray-900">Projeler</h1>
+      <div class="flex items-center space-x-3">
+        <input type="text" id="searchInput" placeholder="Proje ara..."
+          class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none w-64">
+        <button onclick="searchProjects()" class="bg-primary-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-primary-700">Ara</button>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-gray-50 text-left text-gray-500 text-xs uppercase tracking-wider">
+            <th class="px-6 py-3">Proje</th>
+            <th class="px-6 py-3">Sahip</th>
+            <th class="px-6 py-3">Kategori</th>
+            <th class="px-6 py-3">Başvuru Maliyeti</th>
+            <th class="px-6 py-3">Upvote</th>
+            <th class="px-6 py-3">Başvuru</th>
+            <th class="px-6 py-3">Tarih</th>
+            <th class="px-6 py-3">İşlem</th>
+          </tr>
+        </thead>
+        <tbody id="projectTable">
+          <tr><td colspan="8" class="px-6 py-8 text-center text-gray-500">Yükleniyor...</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="pagination"></div>
+  </div>
+
+  <script src="/admin/js/admin.js"></script>
+  <script>
+    requireAuth();
+    renderNav('projects');
+
+    let currentPage = 1;
+    let currentSearch = '';
+
+    const categoryLabels = {
+      TECHNOLOGY: 'Teknoloji', SOCIAL: 'Sosyal', FINANCE: 'Finans',
+      HEALTH: 'Sağlık', EDUCATION: 'Eğitim', ENTERTAINMENT: 'Eğlence', OTHER: 'Diğer'
+    };
+
+    async function loadProjects(page = 1) {
+      currentPage = page;
+      const params = new URLSearchParams({ page, limit: 20 });
+      if (currentSearch) params.set('search', currentSearch);
+
+      const data = await api(`/projects?${params}`);
+
+      if (data.projects.length === 0) {
+        document.getElementById('projectTable').innerHTML =
+          '<tr><td colspan="8" class="px-6 py-8 text-center text-gray-500">Proje bulunamadı.</td></tr>';
+        document.getElementById('pagination').innerHTML = '';
+        return;
+      }
+
+      document.getElementById('projectTable').innerHTML = data.projects.map(p => `
+        <tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="px-6 py-4">
+            <p class="font-medium">${p.title}</p>
+            <p class="text-xs text-gray-500 truncate max-w-xs">${p.description}</p>
+          </td>
+          <td class="px-6 py-4 text-gray-600">${p.owner.name}</td>
+          <td class="px-6 py-4"><span class="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">${categoryLabels[p.category] || p.category}</span></td>
+          <td class="px-6 py-4"><span class="font-semibold text-primary-600">${p.applicationCost}</span></td>
+          <td class="px-6 py-4">${p.upvoteCount}</td>
+          <td class="px-6 py-4">${p.applicationCount}</td>
+          <td class="px-6 py-4 text-gray-500 text-xs">${formatDate(p.createdAt)}</td>
+          <td class="px-6 py-4">
+            <button onclick="deleteProject('${p.id}', '${p.title.replace(/'/g, "\\'")}')"
+              class="text-red-600 hover:text-red-800 text-xs font-medium">Sil</button>
+          </td>
+        </tr>
+      `).join('');
+
+      document.getElementById('pagination').innerHTML = paginate(data.page, data.totalPages, 'loadProjects');
+    }
+
+    function searchProjects() {
+      currentSearch = document.getElementById('searchInput').value.trim();
+      loadProjects(1);
+    }
+
+    document.getElementById('searchInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') searchProjects();
+    });
+
+    async function deleteProject(id, title) {
+      if (!confirm(`"${title}" projesini silmek istediğinize emin misiniz?`)) return;
+      await api(`/projects/${id}`, { method: 'DELETE' });
+      loadProjects(currentPage);
+    }
+
+    loadProjects();
+  </script>
+</body>
+</html>

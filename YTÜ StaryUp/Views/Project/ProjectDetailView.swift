@@ -68,6 +68,17 @@ struct ProjectDetailView: View {
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                             
+                            if let cost = project.applicationCost, cost > 0 {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "star.circle.fill")
+                                        .foregroundStyle(.orange)
+                                    Text("\(cost) kredi")
+                                        .foregroundStyle(.orange)
+                                }
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                            }
+                            
                             Spacer()
                         }
                         .padding(.horizontal)
@@ -103,19 +114,45 @@ struct ProjectDetailView: View {
                 }
                 .navigationBarTitleDisplayMode(.inline)
                 .sheet(isPresented: $viewModel.showApplySheet) {
-                    APIApplySheetView(projectId: projectId, viewModel: viewModel)
+                    APIApplySheetView(projectId: projectId, applicationCost: project.applicationCost ?? 5, viewModel: viewModel)
                 }
                 .overlay(alignment: .bottom) {
                     if !viewModel.isOwnerOfDetail() && !viewModel.hasApplied() {
-                        Button {
-                            viewModel.showApplySheet = true
-                        } label: {
-                            Text("Başvur")
-                                .font(.headline)
+                        let cost = project.applicationCost ?? 5
+                        let userCredits = viewModel.currentUser?.credits ?? 0
+                        let canAfford = userCredits >= cost || cost == 0
+                        
+                        VStack(spacing: 4) {
+                            Button {
+                                viewModel.showApplySheet = true
+                            } label: {
+                                HStack {
+                                    Text("Başvur")
+                                        .font(.headline)
+                                    if cost > 0 {
+                                        HStack(spacing: 3) {
+                                            Image(systemName: "star.circle.fill")
+                                                .font(.subheadline)
+                                            Text("\(cost)")
+                                                .font(.subheadline)
+                                                .fontWeight(.bold)
+                                        }
+                                        .foregroundStyle(.white.opacity(0.9))
+                                    }
+                                }
                                 .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(canAfford ? .blue : .gray)
+                            .controlSize(.large)
+                            .disabled(!canAfford)
+                            
+                            if !canAfford {
+                                Text("Yetersiz kredi (Mevcut: \(userCredits))")
+                                    .font(.caption)
+                                    .foregroundStyle(.red)
+                            }
                         }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.large)
                         .padding()
                         .background(.ultraThinMaterial)
                     }
@@ -278,12 +315,36 @@ struct APIApplicationRowView: View {
 
 struct APIApplySheetView: View {
     let projectId: String
+    let applicationCost: Int
     @ObservedObject var viewModel: ProjectDetailViewModel
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
         NavigationStack {
             Form {
+                if applicationCost > 0 {
+                    Section {
+                        HStack {
+                            Image(systemName: "star.circle.fill")
+                                .foregroundStyle(.orange)
+                                .font(.title2)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Başvuru Maliyeti")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                Text("Bu başvuru \(applicationCost) kredi düşecektir.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Text("\(applicationCost)")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                }
+                
                 Section {
                     TextField("Örn: iOS Developer, UI/UX Designer", text: $viewModel.applyRole)
                 } header: {

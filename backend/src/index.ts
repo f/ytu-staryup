@@ -1,9 +1,11 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
 import dotenv from 'dotenv';
 import { authRouter } from './routes/auth.js';
 import { projectRouter } from './routes/projects.js';
 import { applicationRouter } from './routes/applications.js';
+import { adminRouter } from './routes/admin.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 dotenv.config();
@@ -15,10 +17,14 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+// Admin Panel static files
+app.use('/admin', express.static(path.join(__dirname, 'admin-panel')));
+
 // Routes
 app.use('/api/auth', authRouter);
 app.use('/api/projects', projectRouter);
 app.use('/api/applications', applicationRouter);
+app.use('/api/admin', adminRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {

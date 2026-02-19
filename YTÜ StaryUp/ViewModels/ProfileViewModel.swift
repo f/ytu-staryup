@@ -22,6 +22,9 @@ class ProfileViewModel: ObservableObject {
         errorMessage = nil
         
         do {
+            // Kullanıcı bilgilerini (kredi dahil) güncelle
+            _ = await api.restoreSession()
+            
             let allProjects = try await api.fetchProjects()
             userProjects = allProjects.filter { $0.owner.id == user.id }
             userApplications = try await api.fetchMyApplications()

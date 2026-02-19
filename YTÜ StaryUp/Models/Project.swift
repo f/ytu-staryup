@@ -7,6 +7,7 @@ final class Project {
     var title: String
     var descriptionText: String
     var categoryRaw: String
+    var applicationCost: Int
     var createdAt: Date
     var upvoteCount: Int
     var upvotedByIDs: [UUID]
@@ -26,6 +27,7 @@ final class Project {
         title: String,
         descriptionText: String,
         category: Category,
+        applicationCost: Int = 5,
         owner: User? = nil,
         createdAt: Date = Date()
     ) {
@@ -33,6 +35,7 @@ final class Project {
         self.title = title
         self.descriptionText = descriptionText
         self.categoryRaw = category.rawValue
+        self.applicationCost = applicationCost
         self.owner = owner
         self.createdAt = createdAt
         self.upvoteCount = 0

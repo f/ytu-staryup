@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { authenticate, AuthRequest } from '../middleware/auth.js';
+import { addCredits, spendCredits, getConfigNumber, InsufficientCreditsError } from '../lib/credits.js';
 
 export const applicationRouter = Router();
 
@@ -40,6 +41,24 @@ applicationRouter.post('/', authenticate, async (req: AuthRequest, res) => {
     
     if (existingApplication) {
       return res.status(400).json({ error: 'Bu projeye zaten başvurdunuz' });
+    }
+
+    // Başvuru kredi maliyetini düş
+    if (project.applicationCost > 0) {
+      try {
+        await spendCredits(
+          req.userId!,
+          project.applicationCost,
+          'APPLICATION_SPENT',
+          `"${project.title}" projesine başvuru`,
+          projectId
+        );
+      } catch (err) {
+        if (err instanceof InsufficientCreditsError) {
+          return res.status(400).json({ error: err.message });
+        }
+        throw err;
+      }
     }
     
     const application = await prisma.application.create({
@@ -149,6 +168,10 @@ applicationRouter.patch('/:id/status', authenticate, async (req: AuthRequest, re
     if (application.project.ownerId !== req.userId) {
       return res.status(403).json({ error: 'Bu başvuruyu değerlendirme yetkiniz yok' });
     }
+
+    if (application.status === status) {
+      return res.status(400).json({ error: 'Başvuru zaten bu durumda' });
+    }
     
     const updated = await prisma.application.update({
       where: { id: req.params.id },
@@ -163,6 +186,30 @@ applicationRouter.patch('/:id/status', authenticate, async (req: AuthRequest, re
         },
       },
     });
+
+    const acceptedBonus = await getConfigNumber('APPLICATION_ACCEPTED_BONUS', 10);
+
+    // Kabul edildiğinde kredi ver
+    if (status === 'ACCEPTED') {
+      await addCredits(
+        application.applicantId,
+        acceptedBonus,
+        'APPLICATION_ACCEPTED',
+        `"${application.project.title}" projesine kabul kredisi`,
+        application.id
+      );
+    }
+
+    // Kabul edildikten sonra reddedildiyse krediyi geri al
+    if (status === 'REJECTED' && application.status === 'ACCEPTED') {
+      await spendCredits(
+        application.applicantId,
+        acceptedBonus,
+        'APPLICATION_ACCEPTED',
+        `"${application.project.title}" kabul kredisi iadesi`,
+        application.id
+      ).catch(() => {});
+    }
     
     res.json(updated);
   } catch (error) {

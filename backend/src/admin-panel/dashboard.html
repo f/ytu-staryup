@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — StaryUp Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={theme:{extend:{colors:{primary:{50:'#f0f9ff',100:'#e0f2fe',200:'#bae6fd',300:'#7dd3fc',400:'#38bdf8',500:'#0ea5e9',600:'#0284c7',700:'#0369a1',800:'#075985',900:'#0c4a6e'}}}}}</script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div id="nav"></div>
+
+  <div class="max-w-7xl mx-auto px-4 py-8">
+    <h1 class="text-2xl font-bold text-gray-900 mb-6">Dashboard</h1>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8" id="stats">
+      <div class="bg-white rounded-xl shadow-sm p-6 animate-pulse"><div class="h-12 bg-gray-200 rounded"></div></div>
+      <div class="bg-white rounded-xl shadow-sm p-6 animate-pulse"><div class="h-12 bg-gray-200 rounded"></div></div>
+      <div class="bg-white rounded-xl shadow-sm p-6 animate-pulse"><div class="h-12 bg-gray-200 rounded"></div></div>
+      <div class="bg-white rounded-xl shadow-sm p-6 animate-pulse"><div class="h-12 bg-gray-200 rounded"></div></div>
+      <div class="bg-white rounded-xl shadow-sm p-6 animate-pulse"><div class="h-12 bg-gray-200 rounded"></div></div>
+    </div>
+
+    <!-- Recent Transactions -->
+    <div class="bg-white rounded-xl shadow-sm">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h2 class="text-lg font-semibold text-gray-900">Son Kredi Hareketleri</h2>
+      </div>
+      <div id="recentTx" class="p-6">
+        <div class="animate-pulse space-y-3">
+          <div class="h-8 bg-gray-200 rounded"></div>
+          <div class="h-8 bg-gray-200 rounded"></div>
+          <div class="h-8 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/admin/js/admin.js"></script>
+  <script>
+    requireAuth();
+    renderNav('dashboard');
+
+    async function loadDashboard() {
+      const data = await api('/dashboard');
+
+      document.getElementById('stats').innerHTML = `
+        <div class="bg-white rounded-xl shadow-sm p-6">
+          <p class="text-sm text-gray-500">Toplam Kullanıcı</p>
+          <p class="text-3xl font-bold text-gray-900 mt-1">${data.userCount}</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-6">
+          <p class="text-sm text-gray-500">Toplam Proje</p>
+          <p class="text-3xl font-bold text-gray-900 mt-1">${data.projectCount}</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-6">
+          <p class="text-sm text-gray-500">Toplam Başvuru</p>
+          <p class="text-3xl font-bold text-gray-900 mt-1">${data.applicationCount}</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-6">
+          <p class="text-sm text-gray-500">Toplam Kredi</p>
+          <p class="text-3xl font-bold text-primary-600 mt-1">${data.totalCredits}</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-6">
+          <p class="text-sm text-gray-500">Ortalama Kredi</p>
+          <p class="text-3xl font-bold text-primary-600 mt-1">${data.averageCredits}</p>
+        </div>
+      `;
+
+      if (data.recentTransactions.length === 0) {
+        document.getElementById('recentTx').innerHTML = '<p class="text-gray-500 text-sm">Henüz kredi hareketi yok.</p>';
+        return;
+      }
+
+      document.getElementById('recentTx').innerHTML = `
+        <table class="w-full text-sm">
+          <thead><tr class="text-left text-gray-500 border-b">
+            <th class="pb-2">Kullanıcı</th><th class="pb-2">Tür</th><th class="pb-2">Miktar</th><th class="pb-2">Açıklama</th><th class="pb-2">Tarih</th>
+          </tr></thead>
+          <tbody>
+            ${data.recentTransactions.map(tx => `
+              <tr class="border-b border-gray-50 hover:bg-gray-50">
+                <td class="py-2">${tx.user.name}</td>
+                <td class="py-2">${txTypeBadge(tx.type)}</td>
+                <td class="py-2">${formatCredits(tx.amount)}</td>
+                <td class="py-2 text-gray-600">${tx.description || '—'}</td>
+                <td class="py-2 text-gray-500">${formatDate(tx.createdAt)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    loadDashboard();
+  </script>
+</body>
+</html>

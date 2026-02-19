@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kredi Hareketleri — StaryUp Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={theme:{extend:{colors:{primary:{50:'#f0f9ff',100:'#e0f2fe',200:'#bae6fd',300:'#7dd3fc',400:'#38bdf8',500:'#0ea5e9',600:'#0284c7',700:'#0369a1',800:'#075985',900:'#0c4a6e'}}}}}</script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div id="nav"></div>
+
+  <div class="max-w-7xl mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-bold text-gray-900">Kredi Hareketleri</h1>
+      <div class="flex items-center space-x-3">
+        <select id="typeFilter" class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none">
+          <option value="">Tüm Türler</option>
+          <option value="REGISTRATION_BONUS">Kayıt Bonusu</option>
+          <option value="UPVOTE_EARNED">Upvote Kredisi</option>
+          <option value="APPLICATION_ACCEPTED">Kabul Kredisi</option>
+          <option value="APPLICATION_SPENT">Başvuru Maliyeti</option>
+          <option value="ADMIN_ADJUSTMENT">Admin İşlemi</option>
+        </select>
+        <button onclick="loadTransactions(1)" class="bg-primary-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-primary-700">Filtrele</button>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-gray-50 text-left text-gray-500 text-xs uppercase tracking-wider">
+            <th class="px-6 py-3">Kullanıcı</th>
+            <th class="px-6 py-3">E-posta</th>
+            <th class="px-6 py-3">Tür</th>
+            <th class="px-6 py-3">Miktar</th>
+            <th class="px-6 py-3">Açıklama</th>
+            <th class="px-6 py-3">Tarih</th>
+          </tr>
+        </thead>
+        <tbody id="txTable">
+          <tr><td colspan="6" class="px-6 py-8 text-center text-gray-500">Yükleniyor...</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="pagination"></div>
+  </div>
+
+  <script src="/admin/js/admin.js"></script>
+  <script>
+    requireAuth();
+    renderNav('transactions');
+
+    let currentPage = 1;
+
+    async function loadTransactions(page = 1) {
+      currentPage = page;
+      const params = new URLSearchParams({ page, limit: 30 });
+      const type = document.getElementById('typeFilter').value;
+      if (type) params.set('type', type);
+
+      const data = await api(`/transactions?${params}`);
+
+      if (data.transactions.length === 0) {
+        document.getElementById('txTable').innerHTML =
+          '<tr><td colspan="6" class="px-6 py-8 text-center text-gray-500">Kredi hareketi bulunamadı.</td></tr>';
+        document.getElementById('pagination').innerHTML = '';
+        return;
+      }
+
+      document.getElementById('txTable').innerHTML = data.transactions.map(tx => `
+        <tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="px-6 py-4 font-medium">${tx.user.name}</td>
+          <td class="px-6 py-4 text-gray-600">${tx.user.email}</td>
+          <td class="px-6 py-4">${txTypeBadge(tx.type)}</td>
+          <td class="px-6 py-4">${formatCredits(tx.amount)}</td>
+          <td class="px-6 py-4 text-gray-600">${tx.description || '—'}</td>
+          <td class="px-6 py-4 text-gray-500 text-xs">${formatDate(tx.createdAt)}</td>
+        </tr>
+      `).join('');
+
+      document.getElementById('pagination').innerHTML = paginate(data.page, data.totalPages, 'loadTransactions');
+    }
+
+    loadTransactions();
+  </script>
+</body>
+</html>

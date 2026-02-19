@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ayarlar — StaryUp Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={theme:{extend:{colors:{primary:{50:'#f0f9ff',100:'#e0f2fe',200:'#bae6fd',300:'#7dd3fc',400:'#38bdf8',500:'#0ea5e9',600:'#0284c7',700:'#0369a1',800:'#075985',900:'#0c4a6e'}}}}}</script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div id="nav"></div>
+
+  <div class="max-w-3xl mx-auto px-4 py-8">
+    <h1 class="text-2xl font-bold text-gray-900 mb-6">Sistem Ayarları</h1>
+    <p class="text-gray-500 text-sm mb-6">Kredi miktarları ve sistem genelindeki ayarları buradan değiştirebilirsiniz.</p>
+
+    <div id="configList" class="space-y-4">
+      <div class="bg-white rounded-xl shadow-sm p-6 animate-pulse"><div class="h-12 bg-gray-200 rounded"></div></div>
+      <div class="bg-white rounded-xl shadow-sm p-6 animate-pulse"><div class="h-12 bg-gray-200 rounded"></div></div>
+    </div>
+
+    <div id="successMsg" class="hidden mt-4 bg-green-50 text-green-700 p-3 rounded-lg text-sm"></div>
+  </div>
+
+  <script src="/admin/js/admin.js"></script>
+  <script>
+    requireAuth();
+    renderNav('config');
+
+    const configLabels = {
+      REGISTRATION_BONUS_AMOUNT: {
+        label: 'Kayıt Bonusu',
+        description: 'Yeni kullanıcıların kayıt olunca aldığı kredi miktarı',
+        icon: '🎁'
+      },
+      UPVOTE_CREDIT_AMOUNT: {
+        label: 'Upvote Kredisi',
+        description: 'Proje sahibinin her upvote için kazandığı kredi',
+        icon: '👍'
+      },
+      APPLICATION_ACCEPTED_BONUS: {
+        label: 'Kabul Kredisi',
+        description: 'Başvurusu kabul edilen kullanıcıya verilen kredi',
+        icon: '✅'
+      },
+      DEFAULT_APPLICATION_COST: {
+        label: 'Varsayılan Başvuru Maliyeti',
+        description: 'Yeni projelerin varsayılan başvuru kredi maliyeti',
+        icon: '💰'
+      },
+    };
+
+    async function loadConfig() {
+      const configs = await api('/config');
+
+      if (configs.length === 0) {
+        document.getElementById('configList').innerHTML =
+          '<div class="bg-white rounded-xl shadow-sm p-6 text-gray-500">Henüz ayar tanımlı değil.</div>';
+        return;
+      }
+
+      document.getElementById('configList').innerHTML = configs.map(c => {
+        const meta = configLabels[c.key] || { label: c.key, description: '', icon: '⚙️' };
+        return `
+          <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="flex items-start justify-between">
+              <div class="flex-1">
+                <div class="flex items-center space-x-2">
+                  <span class="text-xl">${meta.icon}</span>
+                  <h3 class="font-semibold text-gray-900">${meta.label}</h3>
+                </div>
+                <p class="text-sm text-gray-500 mt-1">${meta.description}</p>
+                <p class="text-xs text-gray-400 mt-1 font-mono">${c.key}</p>
+              </div>
+              <div class="flex items-center space-x-3">
+                <input type="number" id="config-${c.key}" value="${c.value}" min="0"
+                  class="w-24 px-3 py-2 border border-gray-300 rounded-lg text-center font-bold text-lg focus:ring-2 focus:ring-primary-500 outline-none">
+                <button onclick="saveConfig('${c.key}')"
+                  class="bg-primary-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-primary-700">Kaydet</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function saveConfig(key) {
+      const value = document.getElementById(`config-${key}`).value;
+      try {
+        await api(`/config/${key}`, {
+          method: 'PUT',
+          body: JSON.stringify({ value: String(value) }),
+        });
+        const successEl = document.getElementById('successMsg');
+        const meta = configLabels[key] || { label: key };
+        successEl.textContent = `"${meta.label}" başarıyla güncellendi: ${value}`;
+        successEl.classList.remove('hidden');
+        setTimeout(() => successEl.classList.add('hidden'), 3000);
+      } catch (err) {
+        alert('Hata: ' + err.message);
+      }
+    }
+
+    loadConfig();
+  </script>
+</body>
+</html>

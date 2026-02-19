@@ -249,14 +249,15 @@ class APIService: ObservableObject {
         return try await request("/projects/\(id)")
     }
     
-    func createProject(title: String, description: String, category: String) async throws -> APIProject {
+    func createProject(title: String, description: String, category: String, applicationCost: Int = 5) async throws -> APIProject {
         struct CreateRequest: Encodable {
             let title: String
             let description: String
             let category: String
+            let applicationCost: Int
         }
         
-        return try await request("/projects", method: "POST", body: CreateRequest(title: title, description: description, category: category))
+        return try await request("/projects", method: "POST", body: CreateRequest(title: title, description: description, category: category, applicationCost: applicationCost))
     }
     
     func toggleUpvote(projectId: String) async throws -> UpvoteResponse {
@@ -308,6 +309,7 @@ struct APIUser: Codable, Identifiable {
     let name: String
     let bio: String
     let avatarURL: String?
+    let credits: Int?
     let createdAt: Date
 }
 
@@ -322,6 +324,7 @@ struct APIProject: Codable, Identifiable {
     let title: String
     let description: String
     let category: String
+    let applicationCost: Int?
     let createdAt: Date
     let owner: APIProjectOwner
     let upvoteCount: Int
@@ -338,6 +341,7 @@ struct APIProjectDetail: Codable, Identifiable {
     let title: String
     let description: String
     let category: String
+    let applicationCost: Int?
     let createdAt: Date
     let owner: APIUser
     let upvoteCount: Int

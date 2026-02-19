@@ -14,12 +14,14 @@ model User {
   name         String
   bio          String        @default("")
   avatarURL    String?
+  credits      Int           @default(0)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   
   projects     Project[]     @relation("ProjectOwner")
   applications Application[]
   upvotes      Upvote[]
+  creditTransactions CreditTransaction[]
 }
 
 model Project {
@@ -27,6 +29,7 @@ model Project {
   title           String
   description     String
   category        Category
+  applicationCost Int           @default(5)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   
@@ -35,6 +38,40 @@ model Project {
   
   applications    Application[]
   upvotes         Upvote[]
+}
+
+model Admin {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  createdAt DateTime @default(now())
+}
+
+model CreditTransaction {
+  id          String               @id @default(uuid())
+  amount      Int
+  type        CreditTransactionType
+  description String               @default("")
+  referenceId String?
+  createdAt   DateTime             @default(now())
+
+  userId      String
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model SystemConfig {
+  id    String @id @default(uuid())
+  key   String @unique
+  value String
+}
+
+enum CreditTransactionType {
+  REGISTRATION_BONUS
+  UPVOTE_EARNED
+  APPLICATION_ACCEPTED
+  APPLICATION_SPENT
+  ADMIN_ADJUSTMENT
 }
 
 model Application {

@@ -32,6 +32,30 @@ struct CreateProjectView: View {
                     Text("Projenizi detaylı açıklayın. Ne yapmak istiyorsunuz? Hangi becerilere ihtiyacınız var?")
                 }
                 
+                Section {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Başvuru Maliyeti")
+                            Spacer()
+                            HStack(spacing: 4) {
+                                Image(systemName: "star.circle.fill")
+                                    .foregroundStyle(.orange)
+                                Text("\(Int(viewModel.applicationCost))")
+                                    .fontWeight(.bold)
+                                    .foregroundStyle(.orange)
+                            }
+                        }
+                        Slider(value: $viewModel.applicationCost, in: 0...100, step: 1)
+                            .tint(.orange)
+                    }
+                } header: {
+                    Text("Kredi")
+                } footer: {
+                    Text(viewModel.applicationCost == 0
+                         ? "Ücretsiz başvuru — herkes başvurabilir."
+                         : "Başvuru yapmak için \(Int(viewModel.applicationCost)) kredi gerekecek.")
+                }
+                
                 if let error = viewModel.errorMessage {
                     Section {
                         Text(error)
@@ -64,8 +88,18 @@ struct CreateProjectView: View {
                 }
             }
             .navigationTitle("Yeni Proje")
+            .navigationDestination(isPresented: Binding(
+                get: { viewModel.createdProjectId != nil && !viewModel.didCreate },
+                set: { if !$0 { viewModel.createdProjectId = nil } }
+            )) {
+                if let projectId = viewModel.createdProjectId {
+                    ProjectDetailView(projectId: projectId)
+                }
+            }
             .alert("Paylaşıldı!", isPresented: $viewModel.didCreate) {
-                Button("Tamam") { }
+                Button("Tamam") {
+                    viewModel.didCreate = false
+                }
             } message: {
                 Text("Projeniz başarıyla paylaşıldı.")
             }

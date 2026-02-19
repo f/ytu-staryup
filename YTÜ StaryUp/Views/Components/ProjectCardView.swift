@@ -44,6 +44,17 @@ struct ProjectCardView: View {
                 
                 Spacer()
                 
+                // Application cost
+                if let cost = project.applicationCost, cost > 0 {
+                    HStack(spacing: 3) {
+                        Image(systemName: "star.circle.fill")
+                            .font(.caption2)
+                        Text("\(cost)")
+                            .font(.caption.weight(.semibold))
+                    }
+                    .foregroundStyle(.orange)
+                }
+                
                 // Applications count
                 HStack(spacing: 4) {
                     Image(systemName: "person.badge.plus")
@@ -90,6 +101,7 @@ struct ProjectCardView: View {
             title: "AI Destekli Öğrenci Asistanı",
             description: "Üniversite öğrencileri için yapay zeka destekli bir asistan uygulaması.",
             category: "TECHNOLOGY",
+            applicationCost: 10,
             createdAt: Date(),
             owner: APIProjectOwner(id: "1", name: "Test User", avatarURL: nil),
             upvoteCount: 5,

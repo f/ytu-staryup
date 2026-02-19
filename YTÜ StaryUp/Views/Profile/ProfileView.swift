@@ -29,6 +29,23 @@ struct ProfileView: View {
                                 .multilineTextAlignment(.center)
                                 .padding(.horizontal)
                         }
+                        
+                        // Credit Balance
+                        HStack(spacing: 6) {
+                            Image(systemName: "star.circle.fill")
+                                .foregroundStyle(.orange)
+                            Text("\(user.credits ?? 0)")
+                                .font(.title3)
+                                .fontWeight(.bold)
+                                .foregroundStyle(.orange)
+                            Text("Kredi")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.orange.opacity(0.1))
+                        .clipShape(Capsule())
                     }
                     
                     // Stats
